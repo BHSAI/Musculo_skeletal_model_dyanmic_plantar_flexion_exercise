@@ -1,0 +1,22 @@
+# A cross-bridge cycling model for understanding the role of metabolite accumulation in skeletal muscle fatigue 
+# Abstract
+Skeletal muscle fatigue is associated with the accumulation of metabolites, i.e., adenosine diphosphate (ADP), inorganic phosphate (Pi), and protons (H+), which are thought to inhibit muscle force- and motion-generating capacity during intense exercise. However, the mechanisms of inhibition are controversial and therefore not completely understood. Here, we developed a mathematical model of cross-bridge cycling that accounts for the biochemical kinetic rates and mechanical events to understand the mechanisms of metabolite-mediated inhibition of force. We parameterized the model based on experimental data collected from five sedentary to recreationally active young adults performing a dynamic (0.75 Hz) plantar flexion exercise to exhaustion (642±104 s), including in vivo concentrations of metabolites and H+ measured by 31P Magnetic Resonance Spectroscopy as well as muscle activation signals obtained via electromyography (EMG). Using EMG signals as input, our model accurately simulated the observed changes in metabolite levels (SSR=5.1). Our model simulations suggested that to produce the force needed for a sustained plantar flexion exercise, muscles progressively recruit more motor units. In the absence of this progressive muscle recruitment, we observed a reduction in force-generating capacity due to inhibition by metabolic products. Our simulations also showed that Pi reduced force production by 30% when we increased it 50% above the end-exercise concentrations measured experimentally. Elevations in ADP and H+ had an insignificant effect on force in the model. A parameter sensitivity analysis suggested that force is strongly dependent on the rate of Pi release, whereas an increase in Pi accelerated rebinding to actomyosin and prevented the formation of a strongly bound actin-myosin complex, resulting in decreased force production during muscle fatigue.
+# Contents
+This repository contains the data, scripts, and models used in this study. They are organised into two folders 1) raw_data and 2) codes.
+- Contents of folder /raw_data are as follows:
+    - Power, EMG, Phosphocreatine concentration, Pi concentration , ADP concetration and pH dataset used for parameterization are in the excel files power_for_fitting_DPF_2.xlsx, Emg_for_fitting_DPF.xlsx, Pcr_for_fitting_DPF.xlsx, pi_for_fitting_DPF.xlsx, ADP_for_fitting_DPF.xlsx, and pH_for_fitting_DPF.xlsx, respectively.
+    - Resting state concentrations and the sarcomere shortening velocity data used for parameterization are provided in the excel files Initial_state.xlsx and dsdt_for_fitting_DPF_2.xlsx, repectively.
+    - The data set used for validation is provided in the folder val_dataset
+- Contents of folder /codes are as follows:
+    - This folder contains the matlab codes (MATLAB/R2022a) that represent the musculoskeletal model and the scripts used to simulate the model results shown in this manuscript
+    - Model_XB_human_QC.m encodes the 4-state crossbridge model and the kinetic model disucssed in the manuscript and is used to simulate the force and metabolite dynamics
+    - params.xlsx in folder /params contains the model parameters estimated using our parameterization routine and subseqeuntly used to simulate the model
+    - figure_4_subplots.m simulates the model in Model_XB_human_QC.m  to generate the subplots of Figure 4
+    - figure_5_subplots.m simulates the model in Model_XB_human_QC.m  to generate the subplots of Figure 5
+    - figure_6_a.mlx, figure_6_b.mlx, figure_6_c.mlx and figure_6_d.mlx simulates the model in Model_XB_human_QC.m to generate the subplot A, B, C and D in Figure 6
+    - Model_XB_human_QC_SI.m is the model that incorporates the alternate proton inhibiton hypothesis depicted in Figure S1.
+    - figure_s2.m simulates the model in Model_XB_human_QC_SI.m  to generate the subplots of Figure S2.
+    - figure_s3_a.mlx, figure_s3_b.mlx, figure_s3_c.mlx and figure_s4_d.mlx simulates the model in Model_XB_human_QC_SI.m to generate the subplot A, B, C and D in Figure S3 
+# Set up
+- The codes were written and tested in MATLAB/R2022a and they can be directly executed from matlab command prompt or from the editor
+    - Example: To run the code figure_4_subplots.m, directly type 'figure_4_subplots' in the matlab command prompt or open the editor and run it by pressing F5 or clicking the 'Run' icon.
