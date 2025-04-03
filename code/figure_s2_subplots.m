@@ -4,8 +4,8 @@ clear variables
 clear; close all;
 % fit iemg to hill equation and get the hill parameters
 data_resting=readtable('../raw_data/Initial_state.xlsx','Sheet','Summary'); % resting levels of state variables
-table=readtable("../raw_data/Emg_for_fitting_DPF.xlsx");
-x = table{:,1}; y = table{:,2};
+table_emg=readtable("../raw_data/Emg_for_fitting_DPF.xlsx");
+x = table_emg{:,1}; y = table_emg{:,2};
 [hill_a,hill_b,hill_c]=classic_hill(x,y);
 %load the estimated parameters
 load('params/solutions_SI.mat');
@@ -72,12 +72,20 @@ for i=1:m
     dK3_final(i) = dK3_cycle(n,i);
     dCK_r_final(i) = dCK_r_cycle(n,i);
 end
+% convert simulated force into power
+dispt=readtable("../raw_data/dsdt_for_fitting_DPF_2.xlsx");
+dispt=dispt{1:240,:};
+sim_power = dispt(:,2).*sim_Ftotal;
 % Compile simulations
-H_fig = H_p*10^6;
-simulations=[pi_p Pcr_p ADP_p H_fig ATP_p];
-y_labels={'Pi (mM)','PCr (mM)','ADP (mM)','[H] (nM)','ATP (mM)'};
+%H_fig = H_p*10^6; % [H] unit conversion from mM to nM
+H_fig = -log10(H_p*10^-3); %pH vs [H] interconversion
+simulations=[pi_p Pcr_p ADP_p H_fig];
+%y_labels={'Pi (mM)','PCr (mM)','ADP (mM)','[H] (nM)','ATP (mM)'};
+y_labels={'Pi (mM)','PCr (mM)','ADP (mM)','pH','Power (W)'};
 % compile experimental data
-exp_flag = [1 1 1 1 0];
+exp_flag = [1 1 1 2];
+power = readtable('../raw_data/power_for_fitting_DPF_2.xlsx'); 
+t6 = power{1:240,1}; power_exp = power{1:240,2}; power_error = power{1:240,3};
 phos = readtable('../raw_data/pi_for_fitting_DPF.xlsx'); 
 t1 = phos{:,1}; Pi_exp = phos{:,2};Pi_err= phos{:,3};
 PCR = readtable("../raw_data/Pcr_for_fitting_DPF.xlsx");
@@ -87,13 +95,17 @@ t4 = ADP{:,1}; p4 = ADP{:,2};err4= ADP{:,3};
 ADP_exp=p4*10^-3;ADP_err=err4*10^-3;
 PH = readtable("../raw_data/pH_for_fitting_DPF.xlsx");
 t5 = PH{:,1}; p5 = PH{:,2};err5= PH{:,3};
-H_exp=(10.^-p5)*1e9; p6d=(10.^-(p5+err5))*1e9; H_err=p6d-H_exp;
+%H_exp=(10.^-p5)*1e9; p6d=(10.^-(p5+err5))*1e9; H_err=p6d-H_exp;
+H_exp = p5; H_err=err5;
 cycle_index=[t1 t3 t4 t5];
 exp_data = [Pi_exp PCr_exp ADP_exp H_exp];
 exp_err = [Pi_err PCr_err ADP_err H_err];
 % Plot the figure for metabolites
-q=length(y_labels);
-filename={'Pi.pdf','PCr.pdf','ADP.pdf','H.pdf','ATP.pdf'};
+[~,q]=size(simulations);
+filename={'Pi_mod.pdf','PCr_mod.pdf','ADP_mod.pdf','H_mod.pdf'};
+filename2={'Pi_mod.xlsx','PCr_mod.xlsx','ADP_mod.xlsx','H_mod.xlsx'};
+rmsd = zeros(length(y_labels),1);
+fraction=zeros(length(y_labels),1);
 for i=1:q
     figure(i);clf;
     plot(cycles,simulations(:,i),'linewidth',2,'Color','k');
@@ -101,31 +113,74 @@ for i=1:q
     ylim([0 inf]);
     xlabel('Cycle Index');
     ylabel(y_labels(i));
-    if exp_flag(i)==1
+    x_txt=0.99;
+    y_txt=0.05;
+    if exp_flag(i)>0
         hold on;
         errorbar(cycle_index(:,i),exp_data(:,i),exp_err(:,i), ...
             'LineStyle','none','Marker','.', 'MarkerSize',8,'Color',[1 1 1]*0.5,'CapSize',3)
-    else
-        ylim([0 10]);
+    end
+    if exp_flag(i)==0
+       ylim([0 12]);
+    end
+    if exp_flag(i)==2
+       ylim([6.5 7.2]);
+       y_txt = 0.9; 
+    end
+    if exp_flag(i)>0
+        cycle_index_rd=round(cycle_index(:,i));
+        tf_temp = ismember(cycles,cycle_index_rd);
+        tf_temp(m) = 1;
+        simulations_temp=simulations(tf_temp,i);
+        table_temp=[cycle_index(:,i),simulations_temp,exp_data(:,i)];
+        diff = simulations_temp-exp_data(:,i);
+        rmsd(i)=rms(diff);
+        %rmsd_check(i)= (sum((simulations_temp-exp_data(:,i)).^2)/length(exp_data))^0.5;
+        w=length(diff);
+        flag_temp = zeros(w,1);
+        for j1=1:w
+            if abs(diff(j1))>exp_err(j1,i)
+                flag_temp(j1)=1;
+            end
+        end
+        fraction(i)=(sum(~flag_temp)/w)*100;
+        writematrix(table_temp,fullfile(pwd,'figure_s2_subplots',filename2{i}));
+    end
+    if exp_flag(i)>0
+        rmse_string = sprintf('RMSE: %1.3f (%2.0f%%)',rmsd(i),round(fraction(i)));
+        text(x_txt,y_txt,rmse_string,"Units","normalized","HorizontalAlignment","right","VerticalAlignment","baseline","FontSize",8);
     end
     set(gca,'Unit','Inches')
     p = get(gca,'Position');
     set(gca,'Unit','Inches','Position',[p(1) p(2) 1.75 1.25]);
-    exportgraphics(figure(i),fullfile('figure_s2_subplots',filename{i}),'BackgroundColor','w','Resolution',300,'ContentType','vector');
-%     close(i)
+    exportgraphics(figure(i),fullfile('figure_s2_subplots',filename{i}),'BackgroundColor','w','Resolution',300,'ContentType','vector');   
 end
-% Plot the figure for force
+%calculation of RMSD and fraction for power
+diff = power_exp-sim_power;
+rmsd(5) = rms(diff);
+w=length(diff);
+flag_temp = zeros(w,1);
+for j1=1:w
+    if abs(diff(j1))>power_error(j1)
+        flag_temp(j1)=1; 
+    end
+end
+fraction(5) = (sum(~flag_temp)/w)*100;
+%compile the RMSD
+t_rmsd=table(rmsd,'RowNames',y_labels');
+frac_table=table(fraction,'RowNames',y_labels);
+writetable(t_rmsd,fullfile(pwd,'figure_s2_subplots','RMSD_fig1.xlsx'),'WriteRowNames',true);
+writetable(frac_table,fullfile(pwd,'figure_s2_subplots','frac_fig1.xlsx'),'WriteRowNames',true);
+%plot power data
 figure(q+1);clf;
-plot(cycles,sim_Ftotal,'linewidth',2,'Color','k'); hold on;
-exp_force=(ones(1,m))*53.45;
-plot(cycles,exp_force,'linewidth',2,'Color','k','LineStyle','--');
-ylim([0 75]);
-legend({'Simulation','Experiment'},"Location","southeast");
-legend('boxoff')
-%yline(53.45,'-.k','LineWidth',1);
+errorbar(t6(1:5:240),power_exp(1:5:240),power_error(1:5:240), ...
+            'LineStyle','none','Marker','.', 'MarkerSize',8,'Color',[1 1 1]*0.5,'CapSize',3);hold on;
+plot(cycles,sim_power,'linewidth',2,'Color','k','DisplayName','Simulation'); 
+rmse_string = sprintf('RMSE: %1.3f (%2.0f%%)',rmsd(q+1),round(fraction(q+1)));
+text(1,0.9,rmse_string,"Units","normalized","HorizontalAlignment","right","VerticalAlignment","baseline","FontSize",8);
 xlabel('Cycle Index');
-ylabel('Force (N)');
+ylabel('Power (W)');
 set(gca,'Unit','Inches')
 p = get(gca,'Position');
 set(gca,'Unit','Inches','Position',[p(1) p(2) 1.75 1.25]);
-exportgraphics(figure(q+1),fullfile('figure_s2_subplots','Force.pdf'),'BackgroundColor','w','Resolution',300,'ContentType','vector');
+exportgraphics(figure(q+1),fullfile(pwd,'figure_s2_subplots','power_mod.pdf'),'BackgroundColor','w','Resolution',300,'ContentType','vector');
